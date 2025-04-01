@@ -2,80 +2,86 @@
   import axios from 'axios';
   import {API_URL} from '../config/constant.js'
   import Toast from "../lib/toast.svelte";
+  import { onMount } from 'svelte';
   import { showToast } from "../lib/stores/toastStore.js";
-  
-  let source = '';
-  let destination = '';
-  let unit = 'both';
-  let distance = null;
-  let kmDistance = null;
-  let milesDistance = null;
+  let history = [];
   let errorMessage = '';
+  let page = 1;
+  let limit = 5;
+  let totalPages = 1;
 
-
-  async function calculate() {
-    errorMessage = '';
-    distance = null;
-
-    if (!source || !destination) {
-      errorMessage = 'Please enter both source and destination.';
-      showToast(errorMessage);
-      return;
-    }
-
+  async function fetchHistory() {
     try {
-      const response = await axios.post(`${API_URL}/location/distance`, {
-        source,
-        destination
-      });
-
-      kmDistance = (parseFloat(response.data.distanceInKMs)).toFixed(2);
-      milesDistance = (kmDistance * 0.621371).toFixed(2);
-
-    } catch (err) {
-      if (err?.response?.status === 429) {
-        errorMessage = err.response.data
-      } else if(err?.response?.data?.error?.message){
-        errorMessage = err.response.data.error.message
+      const response = await axios.get(`${API_URL}/history?page=${page}&limit=${limit}`);
+      history = response.data.data;
+      totalPages = response.data.totalPages;
+    } catch (error) {
+      if(error?.response?.data){
+        errorMessage = error?.response?.data
       } else {
-        errorMessage = `Failed to fetch distance. Please try again.`;
+        errorMessage = `Failed to fetch history. Please try again`;
       }
-      showToast(errorMessage)
+      showToast(errorMessage);
     }
   }
 
+  function nextPage() {
+    if (page < totalPages) {
+      page++;
+      fetchHistory();
+    }
+  }
+
+  function prevPage() {
+    if (page > 1) {
+      page--;
+      fetchHistory();
+    }
+  }
+
+  onMount(fetchHistory);
 </script>
 
 <Toast />
 
 <main class="container mt-5">
-  <div class="card shadow-sm">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <h2 class="h5 m-0">Distance Calculator</h2>
-      <a href="/history" class="btn btn-outline-dark">View Historical Queries</a>
-    </div>
-
-    <div class="card-body">
-      <p class="text-muted">Enter the details</p>
-      <!-- Input Fields -->
-      <div class="row mt-3">
-        <div class="col-md-6">
-          <label class="form-label">Source</label>
-          <input type="text" class="form-control" bind:value={source} placeholder="Enter Source Address" />
-        </div>
-        <div class="col-md-6">
-          <label class="form-label">Destination</label>
-          <input type="text" class="form-control" bind:value={destination} placeholder="Enter Destination Address" />
-        </div>
-      </div>
-
-      <!-- Calculate Button -->
-      <div class="mt-4 text-center">
-        <button class="btn btn-danger px-4 py-2" on:click={calculate()} disabled={!destination || !source}>
-          Calculate Distance <i class="bi bi-arrow-right ms-2"></i>
-        </button>
-      </div>
-
-    </div>
+  <div class="d-flex justify-content-between align-items-center">
+    <h1 class="display-5">Historical Queries</h1>
+    <a href="/" class="btn btn-outline-dark">Go Back</a>
   </div>
+
+  <!--{#if errorMessage}-->
+  <!--  <p class="text-danger">{errorMessage}</p>-->
+  <!--{/if}-->
+
+  {#if history.length > 0}
+    <table class="table table-bordered mt-3">
+      <thead class="table-dark">
+      <tr>
+        <th>#</th>
+        <th>Source</th>
+        <th>Date</th>
+      </tr>
+      </thead>
+      <tbody>
+      {#each history as entry, index}
+        <tr>
+          <td>{(page - 1) * limit + index + 1}</td>
+          <td>{entry.source.name}</td>
+          <td>{new Date(entry.createdAt).toLocaleString('en-GB', { hour12: true })}</td>
+        </tr>
+      {/each}
+      </tbody>
+    </table>
+
+    <!-- Bootstrap Pagination -->
+    <div class="d-flex justify-content-between mt-3">
+      <button class="btn btn-outline-dark" on:click={prevPage} disabled={page === 1}>Previous</button>
+      <span>Page {page} of {totalPages}</span>
+      <button class="btn btn-outline-dark" on:click={nextPage} disabled={page === totalPages}>Next</button>
+    </div>
+
+  {:else}
+    <p class="text-center mt-4">No history available.</p>
+  {/if}
 </main>

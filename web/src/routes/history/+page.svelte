@@ -3,7 +3,7 @@
   import axios from 'axios';
   import { API_URL } from '../../config/constant.js'
   import Toast from "../../lib/toast.svelte";
-  import { showToast } from "../../lib/stores/toastStore.js";
+  import { showToast } from "$lib/stores/toastStore.js";
 
 
   let history = [];
@@ -49,7 +49,7 @@
 <main class="container mt-5">
   <div class="d-flex justify-content-between align-items-center">
     <h1 class="display-5">Historical Queries</h1>
-    <a href="/" class="btn btn-outline-dark">Go Back</a>
+    <a href="/history" class="btn btn-outline-dark">Go Back</a>
   </div>
 
   <!--{#if errorMessage}-->
